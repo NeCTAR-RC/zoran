@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetasploitV4>
+  <generated time="2013-12-01 22:00:06 UTC" user="russell" project="np" product="framework"/>
+  <hosts>
+  {% for host in hosts %}
+    <host>
+      <id>{{ loop.index }}</id>
+      <created-at>{{ now }}</created-at>
+      <address>{{ host['ip'] }}</address>
+      <mac/>
+      <comm></comm>
+      <name></name>
+      <state>alive</state>
+      <os-name/>
+      <os-flavor/>
+      <os-sp/>
+      <os-lang/>
+      <arch/>
+      <workspace-id>2</workspace-id>
+      <updated-at>{{ now }}</updated-at>
+      <purpose>server</purpose>
+      <info/>
+      <comments></comments>
+      <scope/>
+      <virtual-host/>
+      <note-count></note-count>
+      <vuln-count></vuln-count>
+      <service-count></service-count>
+      <host-detail-count></host-detail-count>
+      <exploit-attempt-count></exploit-attempt-count>
+      <cred-count></cred-count>
+      <host_details>
+      </host_details>
+      <exploit_attempts>
+      </exploit_attempts>
+      <services>
+      </services>
+      <notes>
+        <note>
+          <created-at>{{ now }}</created-at>
+          <ntype>openstack-uuid</ntype>
+          <workspace-id>2</workspace-id>
+          <host-id>{{ loop.index }}</host-id>
+          <updated-at>{{ now }}</updated-at>
+          <critical/>
+          <seen/>
+          <data>{{ host['uuid'] }}</data>
+        </note>
+        {% set outer_loop = loop %}
+        {% for port in host['ports'] %}
+        <note>
+          <created-at>{{ now }}</created-at>
+          <ntype>openstack-secgroup-port.{{ port['id'] }}</ntype>
+          <workspace-id>2</workspace-id>
+          <host-id>{{ outer_loop.index }}</host-id>
+          <updated-at>{{ now }}</updated-at>
+          <critical/>
+          <seen/>
+          <data>{{ port['range'] }}</data>
+        </note>
+        {% endfor %}
+      </notes>
+      <vulns>
+      </vulns>
+      <creds>
+      </creds>
+    </host>
+    {% endfor %}
+  </hosts>
+  <events>
+  </events>
+  <services>
+  </services>
+  <credentials>
+  </credentials>
+  <web_sites>
+  </web_sites>
+  <web_pages>
+  </web_pages>
+  <web_forms>
+  </web_forms>
+  <web_vulns>
+  </web_vulns>
+  <module_details>
+  </module_details>
+</MetasploitV4>

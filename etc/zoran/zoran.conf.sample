@@ -1,0 +1,30 @@
+[DEFAULT]
+
+#
+# Options defined in zoran.config
+#
+
+# The MongoDB connection string used to connect to the
+# database (string value)
+#mongodb_connection=mongodb://localhost:27017/
+
+
+[nova]
+
+#
+# Options defined in zoran.config
+#
+
+# Keystone URL (string value)
+#auth_url=<None>
+
+# Password to connect Openstack with (string value)
+#admin_password=<None>
+
+# Tenant name (string value)
+#admin_tenant_name=<None>
+
+# Openstack username (string value)
+#admin_username=<None>
+
+

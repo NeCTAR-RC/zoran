@@ -1,0 +1,15 @@
+<ruby>
+
+addresses = Hash.new{|h, k| h[k] = []}
+
+framework.db.each_note(framework.db.workspace) { |note|
+    next unless note.ntype.starts_with? 'openstack-secgroup-port'
+    addresses[note.host.address] << note.data
+    }
+
+addresses.each_pair {| key, value |
+           ports = value.join(",")
+           run_single("db_nmap -A -p#{ports} #{key}")
+}
+
+</ruby>

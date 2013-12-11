@@ -1,0 +1,3 @@
+ubuntu
+ec2-user
+root

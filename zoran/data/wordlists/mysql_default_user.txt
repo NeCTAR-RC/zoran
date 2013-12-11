@@ -1,0 +1,17 @@
+mysql
+newuser
+demo
+drupal
+joomla
+wordpress
+dummy
+admin
+monty
+cacti
+nagios
+user
+magento
+phpbb
+vbulletin
+punbb
+vtiger

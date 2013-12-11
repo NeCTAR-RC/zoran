@@ -1,0 +1,33 @@
+workspace -a nectar-{{ scan_id }}
+workspace nectar-{{ scan_id }}
+
+db_import {{ input_file }}
+
+# Initial port scan
+resource {{ resource_path }}/nmap.rc
+
+# Database tests
+resource {{ resource_path }}/couchdb.rc
+resource {{ resource_path }}/mysql.rc
+resource {{ resource_path }}/postgresql.rc
+resource {{ resource_path }}/mongodb.rc
+
+# File systems
+resource {{ resource_path }}/nfs.rc
+
+# Email tests
+resource {{ resource_path }}/smtp.rc
+
+# Remote access
+resource {{ resource_path }}/ssh.rc
+resource {{ resource_path }}/vnc.rc
+
+# Application tests
+resource {{ resource_path }}/tomcat.rc
+resource {{ resource_path }}/ftp.rc
+
+db_export {{ output_file }}
+{% if drop_database %}
+workspace -d nectar-{{ scan_id }}
+{% endif %}
+exit

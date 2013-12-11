@@ -1,0 +1,6 @@
+mysql
+password
+secret
+some_pass
+obscure
+mypass

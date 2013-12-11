@@ -1,0 +1,30 @@
+<ruby>
+require 'set'
+
+ports = Set.new()
+search_term = 'mysql'
+run_single("use auxiliary/scanner/mysql/mysql_login")
+run_single("set THREADS 10")
+
+user_file = File.join(Msf::Config.data_directory, "wordlists", "mysql_default_user.txt")
+pass_file = File.join(Msf::Config.data_directory, "wordlists", "mysql_default_pass.txt")
+run_single("set USER_FILE #{user_file}")
+run_single("set PASS_FILE #{pass_file}")
+
+framework.db.services(framework.db.workspace, true).each do |service|
+    host = service.host
+    next unless(
+      host.attribute_names.any? { |a| host[a.intern].to_s.match(search_term)} or
+      service.attribute_names.any? { |a| service[a.intern].to_s.match(search_term)}
+    )
+    ports.add service.port.to_i
+end
+print_line("#{ports.to_a}")
+
+ports.each do |port|
+    run_single("services -u -S '#{search_term}' -p #{port} -R")
+    run_single("set RPORT #{port}")
+    run_single("run")
+end
+
+</ruby>

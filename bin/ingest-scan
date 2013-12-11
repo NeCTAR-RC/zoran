@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+import argparse
+from pprint import pprint
+import sys
+
+from lxml import etree
+import xmltodict
+from pymongo import MongoClient
+
+from zoran.nova import list_servers, connect
+from zoran.metasploit import wash_host
+from zoran.config import CONF, cfg
+
+
+core_opts = [
+    cfg.StrOpt('input-file',
+               help='Result XML to process',
+               required=True),
+    cfg.StrOpt('ip',
+               help='IP regex of servers'),
+]
+
+CONF.register_cli_opts(core_opts)
+
+
+def run(input_file, live_hosts, db_url):
+    client = MongoClient(db_url)
+    db = client.zoran
+    host_scans = db.host_scans
+    tree = etree.parse(input_file)
+    hosts = tree.find('hosts')
+    xmltodict.parse(etree.tostring(hosts))
+    live_hosts = dict((h.id, h) for h in live_hosts)
+    vuln_hosts_count = 0
+    invalid_hosts_count = 0
+    hosts = xmltodict.parse(etree.tostring(hosts))['hosts']['host']
+    if not isinstance(hosts, list):
+        hosts = [hosts]
+    for host in hosts:
+        host = wash_host(host)
+        if host['uuid'] not in live_hosts:
+            invalid_hosts_count += 1
+            continue
+
+        # Insert or update database
+        scan = {'uuid': host['uuid']}
+        scan = host_scans.find_one(scan) or scan
+        if not 'scans' in scan:
+            scan['scans'] = []
+        # TODO we should check if the scan has already been ingested.
+        scan['scans'].append(host)
+        host_scans.insert(scan)
+
+        # Count vulnerabilities
+        if host['vulns'] or host['creds']:
+            vuln_hosts_count += 1
+
+    print "Total Hosts:", len(hosts)
+    print "Invalid Hosts:", invalid_hosts_count
+    print "Vulnerable Hosts:", vuln_hosts_count
+
+if __name__ == "__main__":
+    CONF(sys.argv[1:], project='zoran')
+    nova_client = connect()
+    servers = list_servers(nova_client, ip=CONF.ip)
+
+    run(CONF.input_file, servers, CONF.mongodb_connection)

