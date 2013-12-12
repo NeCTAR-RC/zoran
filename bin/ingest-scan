@@ -29,16 +29,23 @@ def run(input_file, live_hosts, db_url):
     db = client.zoran
     host_scans = db.host_scans
     tree = etree.parse(input_file)
+
+    # Filter report down to hosts only
     hosts = tree.find('hosts')
-    xmltodict.parse(etree.tostring(hosts))
+
+    # Convert nova hosts to dict
     live_hosts = dict((h.id, h) for h in live_hosts)
+
+    # Extract the scan id
+    scan_details = tree.find('generated').attrib
+    scan_id = scan_details['project']
+
     vuln_hosts_count = 0
     invalid_hosts_count = 0
-    hosts = xmltodict.parse(etree.tostring(hosts))['hosts']['host']
-    if not isinstance(hosts, list):
-        hosts = [hosts]
     for host in hosts:
-        host = wash_host(host)
+        host = xmltodict.parse(etree.tostring(host))
+        host = wash_host(host['host'])
+        host['scan-id'] = scan_id
         if host['uuid'] not in live_hosts:
             invalid_hosts_count += 1
             continue
