@@ -18,6 +18,9 @@ core_opts = [
     cfg.StrOpt('id',
                help='The identifier of the scan',
                default=None),
+    cfg.BoolOpt('interactive',
+                help='Run Metasploit with an interactive shell',
+                default=False),
 ]
 
 CONF.register_cli_opts(core_opts)
@@ -30,4 +33,5 @@ if __name__ == "__main__":
         raise Exception(
             "The Metasploit executable '%s' was not found in your PATH."
             % METASPLOIT)
-    scan(CONF.input_file, CONF.output_file, uuid=CONF.id)
+    scan(CONF.input_file, CONF.output_file,
+         uuid=CONF.id, interactive=CONF.interactive)

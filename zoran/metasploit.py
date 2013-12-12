@@ -76,7 +76,7 @@ def wash_host(host):
     return host
 
 
-def scan(input_file, output_file, uuid, drop=True):
+def scan(input_file, output_file, uuid, drop=True, interactive=False):
 
     context = {}
     context['scan_id'] = uuid
@@ -86,16 +86,19 @@ def scan(input_file, output_file, uuid, drop=True):
     context['output_file'] = path.abspath(output_file)
     tmpl = TEMPLATE_ENV.get_template(TEMPLATE_FILE)
     fd = tempfile.NamedTemporaryFile(prefix='scan')
-    # TODO this file needs to be saved somewhere or read back to the
-    # user for logging.
-    fd1 = tempfile.NamedTemporaryFile(prefix='scan-output')
     fd.write(tmpl.render(context))
     fd.flush()
     # TODO If there is an error in the script then this will just keep
     # running.  We need to either prevent metasploit from dropping to
     # interactive console or detect the prompt.
-    subprocess.call(" ".join([METASPLOIT,
-                              '-m', MODULE_PATH,
-                              '-r', fd.name,
-                              '-o', fd1.name]),
-                    shell=True)
+    args = [METASPLOIT,
+            '-m', MODULE_PATH,
+            '-r', fd.name]
+
+    if not interactive:
+        # TODO this file needs to be saved somewhere or read back to
+        # the user for logging.
+        fd1 = tempfile.NamedTemporaryFile(prefix='scan-output')
+        args.extend(['-o', fd1.name])
+
+    subprocess.call(" ".join(args), shell=True)
