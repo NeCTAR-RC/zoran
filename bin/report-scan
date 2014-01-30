@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+import argparse
+from pprint import pprint
+import sys
+
+from lxml import etree
+import xmltodict
+from prettytable import PrettyTable
+
+from zoran.nova import list_servers, connect
+from zoran.metasploit import wash_host
+from zoran.config import CONF, cfg
+
+
+core_opts = [
+    cfg.StrOpt('input-file',
+               help='Result XML to process',
+               required=True),
+    cfg.StrOpt('ip',
+               help='IP regex of servers'),
+]
+
+CONF.register_cli_opts(core_opts)
+
+
+def run(input_file, live_hosts):
+    tree = etree.parse(input_file)
+
+    # Filter report down to hosts only
+    hosts = tree.find('hosts')
+
+    # Convert nova hosts to dict
+    live_hosts = dict((h.id, h) for h in live_hosts)
+
+    # Extract the scan id
+    scan_details = tree.find('generated').attrib
+    scan_id = scan_details['project']
+
+    vuln_hosts_count = 0
+    invalid_hosts_count = 0
+    print "Scan Time: %s" % scan_details['time']
+    print "Scan ID: %s" % scan_id
+    print ""
+
+    for host in hosts:
+        host = xmltodict.parse(etree.tostring(host))
+        host = wash_host(host['host'])
+        host['scan-id'] = scan_id
+        if host['uuid'] not in live_hosts:
+            invalid_hosts_count += 1
+            # continue
+
+        if not (host['vulns'] or host['creds']):
+            continue
+        else:
+            vuln_hosts_count += 1
+
+        print "\n=========================================="
+        print "UUID: %s" % host['uuid']
+        print "Address: %s" % host['address']
+        print "=========================================="
+        # Count vulnerabilities
+        if host['vulns']:
+            print "\nVulnerabilities\n---------------\n"
+            table = PrettyTable(["Name"])
+            for vulns in host['vulns']:
+                table.add_row([vulns['name']])
+            print str(table)
+        if host['creds']:
+            print "\nCredentials\n-----------\n"
+            table = PrettyTable(["Service", "Port", "user", "password"])
+            for cred in host['creds']:
+                table.add_row([cred['sname'], cred['port'],
+                               cred['user'], cred['pass']])
+            print str(table)
+    print "\n\n"
+    print "Total Hosts:", len(hosts)
+    print "Invalid Hosts:", invalid_hosts_count
+    print "Vulnerable Hosts:", vuln_hosts_count
+
+if __name__ == "__main__":
+    CONF(sys.argv[1:], project='zoran')
+    nova_client = connect()
+    servers = list_servers(nova_client, ip=CONF.ip)
+    servers = []
+    run(CONF.input_file, servers)
