@@ -1,0 +1,134 @@
+<ruby>
+require 'set'
+
+print_line("443")
+run_single("services -u -p 443 -R")
+run_single("set STARTTLS None")
+run_single("set RPORT 443")
+run_single("run")
+
+# HTTP Guessing
+ports = Set.new()
+search_term = 'http'
+run_single("use auxiliary/scanner/ssl/openssl_heartbleed")
+run_single("set THREADS 100")
+
+framework.db.services(framework.db.workspace, true, 'tcp', nil).each do |service|
+  host = service.host
+  next unless(
+    host.attribute_names.any? { |a| host[a.intern].to_s.match(/#{search_term}/i) and host[a.intern].to_s.match(/ssl/i)} or
+    service.attribute_names.any? { |a| service[a.intern].to_s.match(/#{search_term}/i) and service[a.intern].to_s.match(/ssl/i)}
+  )
+  ports.add service.port.to_i
+end
+
+print_line("#{ports.to_a}")
+
+ports.each do |port|
+  run_single("services -u -S '#{search_term}' -S 'ssl' -p #{port} -R")
+  run_single("set STARTTLS None")
+  run_single("set RPORT #{port}")
+  run_single("run")
+end
+
+
+# SMTP
+ports = Set.new()
+search_term = 'smtp'
+run_single("use auxiliary/scanner/ssl/openssl_heartbleed")
+run_single("set THREADS 100")
+
+framework.db.services(framework.db.workspace, true, 'tcp', nil).each do |service|
+  host = service.host
+  next unless(
+    host.attribute_names.any? { |a| host[a.intern].to_s.match(search_term)} or
+    service.attribute_names.any? { |a| service[a.intern].to_s.match(search_term)}
+  )
+  ports.add service.port.to_i
+end
+
+print_line("#{ports.to_a}")
+
+ports.each do |port|
+  run_single("services -u -S '#{search_term}' -p #{port} -R")
+  run_single("set STARTTLS SMTP")
+  run_single("set RPORT #{port}")
+  run_single("run")
+end
+
+
+# JABBER
+ports = Set.new()
+search_term = 'xmpp'
+run_single("use auxiliary/scanner/ssl/openssl_heartbleed")
+run_single("set THREADS 100")
+
+framework.db.services(framework.db.workspace, true, 'tcp', nil).each do |service|
+  host = service.host
+  next unless(
+    host.attribute_names.any? { |a| host[a.intern].to_s.match(search_term)} or
+    service.attribute_names.any? { |a| service[a.intern].to_s.match(search_term)}
+  )
+  ports.add service.port.to_i
+end
+
+print_line("#{ports.to_a}")
+
+ports.each do |port|
+  run_single("services -u -S '#{search_term}' -p #{port} -R")
+  run_single("set STARTTLS JABBER")
+  run_single("set RPORT #{port}")
+  run_single("run")
+end
+
+
+# POP3
+ports = Set.new()
+search_term = 'pop3'
+run_single("use auxiliary/scanner/ssl/openssl_heartbleed")
+run_single("set THREADS 100")
+
+framework.db.services(framework.db.workspace, true, 'tcp', nil).each do |service|
+  host = service.host
+  next unless(
+    host.attribute_names.any? { |a| host[a.intern].to_s.match(search_term)} or
+    service.attribute_names.any? { |a| service[a.intern].to_s.match(search_term)}
+  )
+  ports.add service.port.to_i
+end
+
+print_line("#{ports.to_a}")
+
+ports.each do |port|
+  run_single("services -u -S '#{search_term}' -p #{port} -R")
+  run_single("set STARTTLS POP3")
+  run_single("set RPORT #{port}")
+  run_single("run")
+end
+
+
+# IMAP
+ports = Set.new()
+search_term = 'imap'
+run_single("use auxiliary/scanner/ssl/openssl_heartbleed")
+run_single("set THREADS 100")
+
+framework.db.services(framework.db.workspace, true, 'tcp', nil).each do |service|
+  host = service.host
+  next unless(
+    host.attribute_names.any? { |a| host[a.intern].to_s.match(search_term)} or
+    service.attribute_names.any? { |a| service[a.intern].to_s.match(search_term)}
+  )
+  ports.add service.port.to_i
+end
+
+print_line("#{ports.to_a}")
+
+ports.each do |port|
+  run_single("services -u -S '#{search_term}' -p #{port} -R")
+  run_single("set STARTTLS IMAP")
+  run_single("set RPORT #{port}")
+  run_single("run")
+end
+
+</ruby>

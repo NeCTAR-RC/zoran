@@ -23,6 +23,7 @@ resource {{ resource_path }}/ssh.rc
 resource {{ resource_path }}/vnc.rc
 
 # Application tests
+resource {{ resource_path }}/heartbleed.rc
 resource {{ resource_path }}/tomcat.rc
 resource {{ resource_path }}/ftp.rc
 
