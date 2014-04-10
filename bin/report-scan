@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 
-import argparse
-from pprint import pprint
+from __future__ import print_function
+
 import sys
+import smtplib
+from email.mime.text import MIMEText
+from email import Utils
+from StringIO import StringIO
 
 from lxml import etree
 import xmltodict
@@ -19,6 +23,16 @@ core_opts = [
                required=True),
     cfg.StrOpt('ip',
                help='IP regex of servers'),
+    cfg.BoolOpt('disable-host-validation',
+               help='Don\'t validate hosts'),
+    cfg.BoolOpt('list-boring',
+               help='List all vulnerabilities, even ones that would normally be white listed.'),
+    cfg.BoolOpt('ignore-database',
+               help='Don\'t bother checking the database.'),
+    cfg.BoolOpt('print',
+               help='Print the report rather than email it'),
+    cfg.BoolOpt('report-empty',
+               help='Provide a report, even if there isn\'t any vulnerability to report.'),
 ]
 
 CONF.register_cli_opts(core_opts)
@@ -31,7 +45,7 @@ def host_service(host, service_id):
             return service
 
 
-def run(input_file, live_hosts):
+def generate_report(input_file, live_hosts):
     tree = etree.parse(input_file)
 
     # Filter report down to hosts only
@@ -44,54 +58,128 @@ def run(input_file, live_hosts):
     scan_details = tree.find('generated').attrib
     scan_id = scan_details['project']
 
+    output = StringIO()
+
     vuln_hosts_count = 0
+    invuln_hosts_count = 0
     invalid_hosts_count = 0
-    print "Scan Time: %s" % scan_details['time']
-    print "Scan ID: %s" % scan_id
-    print ""
+    boring_hosts_count = 0
+    print("Scan Time: %s" % scan_details['time'], file=output)
+    print("Scan ID: %s" % scan_id, file=output)
+    print("", file=output)
 
     for host in hosts:
         host = xmltodict.parse(etree.tostring(host))
         host = wash_host(host['host'])
         host['scan-id'] = scan_id
-        if host['uuid'] not in live_hosts:
+        if host['uuid'] not in live_hosts and not CONF.disable_host_validation:
             invalid_hosts_count += 1
             continue
 
-        if not (host['vulns'] or host['creds']):
-            continue
+        all_creds = host['creds']
+        if CONF.list_boring:
+            interesting_creds = all_creds
         else:
-            vuln_hosts_count += 1
+            interesting_creds = list(filter_creds(all_creds))
 
-        print "\n=========================================="
-        print "UUID: %s" % host['uuid']
-        print "Address: %s" % host['address']
-        print "=========================================="
+        if not (host['vulns'] or interesting_creds):
+            if all_creds:
+                # We would have reported this host, except that the only
+                # vulnerabilities are boring.
+                boring_hosts_count += 1
+            else:
+                # There aren't any vulnerabilities (that we are testing
+                # for) at all, even boring ones.
+                invuln_hosts_count += 1
+            continue
+
+        # There's some sort of vulnerability, so report it.
+        vuln_hosts_count += 1
+
+        print("\n==========================================", file=output)
+        print("UUID: %s" % host['uuid'], file=output)
+        print("Address: %s" % host['address'], file=output)
+        print("==========================================", file=output)
         # Count vulnerabilities
         if host['vulns']:
-            print "\nVulnerabilities\n---------------\n"
+            print("\nVulnerabilities\n---------------\n", file=output)
             table = PrettyTable(["Name", "Service", "Port"])
             for vulns in host['vulns']:
                 if 'service-id' in vulns:
                     service = host_service(host, vulns['service-id'])
                     table.add_row([vulns['name'], service['name'], service['port']])
                 else:
-                    table.add_row([vulns['name']])
-            print str(table)
-        if host['creds']:
-            print "\nCredentials\n-----------\n"
+                    table.add_row([vulns['name'], None, None])
+            print(str(table), file=output)
+        if interesting_creds:
+            print("\nCredentials\n-----------\n", file=output)
             table = PrettyTable(["Service", "Port", "user", "password"])
-            for cred in host['creds']:
+            for cred in interesting_creds:
                 table.add_row([cred['sname'], cred['port'],
                                cred['user'], cred['pass']])
-            print str(table)
-    print "\n\n"
-    print "Total Hosts:", len(hosts)
-    print "Invalid Hosts:", invalid_hosts_count
-    print "Vulnerable Hosts:", vuln_hosts_count
+            print(str(table), file=output)
+
+    print("\n\n", file=output)
+    summary = {}
+
+    summary["total"] = len(hosts)
+    print("Total Hosts:", summary["total"], file=output)
+
+    if not CONF.disable_host_validation:
+        summary["invalid"] = invalid_hosts_count
+        print("Invalid Hosts:", summary["invalid"], file=output)
+
+    if not CONF.list_boring:
+        summary["whitelist"] = boring_hosts_count
+        print("White-listed Hosts:", summary["whitelist"], file=output)
+
+    summary["vulnerable"] = vuln_hosts_count
+    print("Vulnerable Hosts:", summary["vulnerable"], file=output)
+
+    output.seek(0)
+    return output, summary
+
+
+def print_report(output):
+    string = output.read()
+    print(string)
+
+
+def email_report(output):
+    msg = MIMEText(output.read())
+    msg['Subject'] = CONF.email.report_subject
+    msg['From'] = CONF.email.report_from
+    msg['To'] = CONF.email.report_to
+    msg['Date'] = Utils.formatdate(localtime=1)
+    s = smtplib.SMTP(CONF.email.smtp_server)
+    s.sendmail(CONF.email.report_from,
+               CONF.email.report_to,
+               msg.as_string())
+    s.quit()
+
+
+def filter_creds(creds):
+    """Remove the "vulnerabilities" that we aren't interested in."""
+    for cred in creds:
+        if cred['sname'] == "ftp" \
+           and cred['user'] == "anonymous" \
+           and cred['pass'] == "mozilla@example.com":
+            continue
+        yield cred
 
 if __name__ == "__main__":
     CONF(sys.argv[1:], project='zoran')
     nova_client = connect()
-    servers = list_servers(nova_client, ip=CONF.ip)
-    run(CONF.input_file, servers)
+
+    if CONF.disable_host_validation:
+        servers = []
+    else:
+        servers = list_servers(nova_client, ip=CONF.ip)
+
+    report, summary = generate_report(CONF.input_file, servers)
+
+    if summary["vulnerable"] or CONF.report_empty:
+        if CONF.print:
+            print_report(report)
+        else:
+            email_report(report)

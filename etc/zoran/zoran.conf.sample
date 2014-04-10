@@ -9,6 +9,25 @@
 #mongodb_connection=mongodb://localhost:27017/
 
 
+[email]
+
+#
+# Options defined in zoran.config
+#
+
+# Report from address (string value)
+#report_from=<None>
+
+# Report email subject line. (string value)
+#report_subject=ZORAN the protector report
+
+# Report to address (string value)
+#report_to=<None>
+
+# The hostname of the smtp server. (string value)
+#smtp_server=localhost
+
+
 [nova]
 
 #
