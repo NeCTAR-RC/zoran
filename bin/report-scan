@@ -24,6 +24,13 @@ core_opts = [
 CONF.register_cli_opts(core_opts)
 
 
+def host_service(host, service_id):
+    service_id = host['uuid'] + '.' + service_id
+    for service in host['services']:
+        if service.get('id') == service_id:
+            return service
+
+
 def run(input_file, live_hosts):
     tree = etree.parse(input_file)
 
@@ -63,9 +70,13 @@ def run(input_file, live_hosts):
         # Count vulnerabilities
         if host['vulns']:
             print "\nVulnerabilities\n---------------\n"
-            table = PrettyTable(["Name"])
+            table = PrettyTable(["Name", "Service", "Port"])
             for vulns in host['vulns']:
-                table.add_row([vulns['name']])
+                if 'service-id' in vulns:
+                    service = host_service(host, vulns['service-id'])
+                    table.add_row([vulns['name'], service['name'], service['port']])
+                else:
+                    table.add_row([vulns['name']])
             print str(table)
         if host['creds']:
             print "\nCredentials\n-----------\n"
