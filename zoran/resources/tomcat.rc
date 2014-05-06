@@ -3,7 +3,7 @@ require 'set'
 
 ports = Set.new()
 search_term = 'Coyote'
-run_single("use auxiliary/admin/http/tomcat_administration")
+run_single("use auxiliary/scanner/http/tomcat_mgr_login")
 run_single("set THREADS 100")
 
 framework.db.services(framework.db.workspace, true, 'tcp', nil).each do |service|
