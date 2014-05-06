@@ -1,0 +1,141 @@
+<html>
+  <head>
+    <title>{{title}}</title>
+  <head>
+  <body>
+    <table>
+      <tr>
+        <th>Scan Time:</th>
+        <td>{{scan_time}}</td>
+      </tr>
+      <tr>
+        <th>Scan Id:</th>
+        <td>{{scan_id}}</td>
+      </tr>
+    </table>
+{%- for vulnerablehost in vulnerablehosts %}
+    <br>
+    <table>
+      <tr>
+        <th>UUID:</th>
+        <td>{{vulnerablehost.uuid}}</td>
+      </tr>
+      <tr>
+        <th>Address:</th>
+        <td>{{vulnerablehost.ip}}</td>
+      </tr>
+    </table>
+{%- if vulnerablehost.credentials %}
+    <table border="1">
+      <tr>
+        <th colspan="4">Credentials</th>
+      </tr>
+      <tr>
+        <th>Service</th>
+        <th>Port</th>
+        <th>User</th>
+        <th>Password</th>
+      </tr>
+{%- for credential in vulnerablehost.credentials %}
+      <tr>
+        <td>{{credential.service}}</td>
+        <td>{{credential.port}}</td>
+        <td>{{credential.user}}</td>
+        <td>{{credential.password}}</td>
+      </tr>
+{%- endfor %}
+    </table>
+{%- endif %}
+{%- if vulnerablehost.vulnerabilities %}
+    <table border="1">
+      <tr>
+        <th colspan="3">Vulnerabilities</th>
+      </tr>
+      <tr>
+        <th>Name</th>
+        <th>Service</th>
+        <th>Port</th>
+      </tr>
+{%- for vulnerability in vulnerablehost.vulnerabilities %}
+      <tr>
+        <td>{{vulnerability.name}}</td>
+        <td>{{vulnerability.service}}</td>
+        <td>{{vulnerability.port}}</td>
+      </tr>
+{%- endfor %}
+    </table>
+{%- endif %}
+{%- endfor %}
+{%- if dump %}
+    <br>
+    <table border=1>
+      <tr>
+        <th colspan=5>Vulnerability Dump</th>
+      </tr>
+      <tr>
+        <th>UUID</th>
+        <th>Address</th>
+        <th>Name</th>
+        <th>Service</th>
+        <th>Port</th>
+      </tr>
+{%- for vulnerability in vulnerabilities|print_it %}
+      <tr>
+        <td>{{vulnerability.uuid}}</td>
+        <td>{{vulnerability.ip}}</td>
+        <td>{{vulnerability.name}}</td>
+        <td>{{vulnerability.service}}</td>
+        <td>{{vulnerability.port}}</td>
+      </tr>
+{%- endfor %}
+    </table>
+    <br>
+    <table border=1>
+      <tr>
+        <th colspan=6>Credential Dump</th>
+      </tr>
+      <tr>
+        <th>UUID</th>
+        <th>Address</th>
+        <th>Service</th>
+        <th>Port</th>
+        <th>User</th>
+        <th>Password</th>
+      </tr>
+{%- for credential in credentials|print_it %}
+      <tr>
+        <td>{{credential.uuid}}</td>
+        <td>{{credential.ip}}</td>
+        <td>{{credential.service}}</td>
+        <td>{{credential.port}}</td>
+        <td>{{credential.user}}</td>
+        <td>{{credential.password}}</td>
+      </tr>
+{%- endfor %}
+    </table>
+{%- endif %}
+    <br>
+    <table>
+      <tr>
+        <th>Total Hosts:</th>
+        <td align="right">{{total}}</td>
+      </tr>
+{%- if not list_boring %}
+      <tr>
+        <th>White-listed Hosts:</th>
+        <td align="right">{{white_listed}}</td>
+      </tr>
+{%- endif %}
+      <tr>
+        <th>Vulnerable Hosts:</th>
+        <td align="right">{{vulnerablehosts|count}}</td>
+      </tr>
+{%- if invalid_hosts %}
+      <tr>
+        <th>Invalid Hosts:</th>
+        <td align="right">{{invalid_host_count}}</td>
+      </tr>
+{%- endif %}
+    </table>
+  </body>
+</html>

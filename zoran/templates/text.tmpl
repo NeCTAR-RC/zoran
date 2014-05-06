@@ -1,0 +1,69 @@
+Scan Time: {{scan_time}}
+Scan ID: {{scan_id}}
+{%- for vulnerablehost in vulnerablehosts %}
+
+==========================================
+UUID: {{vulnerablehost.uuid}}
+Address: {{vulnerablehost.ip}}
+==========================================
+{%- if vulnerablehost.credentials %}
+
+Credentials
+-----------
+{%- for credential in vulnerablehost.credentials %}
+
+Service:  {{credential.service}}
+Port:     {{credential.port}}
+User:     {{credential.user}}
+Password: {{credential.password}}
+{%- endfor %}
+{%- endif %}
+{%- if vulnerablehost.vulnerabilities %}
+
+Vulnerabilities
+---------------
+{%- for vulnerability in vulnerablehost.vulnerabilities %}
+
+Name:    {{vulnerability.name}}
+Service: {{vulnerability.service}}
+Port:    {{vulnerability.port}}
+{%- endfor %}
+{%- endif %}
+{%- endfor %}
+{%- if dump %}
+
+
+===================
+Vulnerability dump:
+===================
+
++--------------------------------------+-----------------+-----------+-----------+-----------+
+|                 UUID                 |     Address     |   Name    |   Service |   Port    |
++--------------------------------------+-----------------+-----------+-----------+-----------+
+{% for vulnerability in vulnerabilities|print_it -%}
+| {{vulnerability.uuid}} | {{vulnerability.ip|pad_ip}} |   {{vulnerability.name}}  |   {{vulnerability.service}}   |   {{vulnerability.port}}   |
+{% endfor -%}
++--------------------------------------+-----------------+-----------+-----------+-----------+
+
+
+================
+Credential Dump:
+================
+
++--------------------------------------+-----------------+-----------+-----------+-----------+---------------+
+|                 UUID                 |     Address     |   Service |   Port    |   User    |   Password    |
++--------------------------------------+-----------------+-----------+-----------+-----------+---------------+
+{% for credential in credentials|print_it -%}
+| {{credential.uuid}} | {{credential.ip|pad_ip}} |   {{credential.service}}  |   {{credential.port}} |   {{credential.user}} |   {{credential.password}} |
+{% endfor -%}
++--------------------------------------+-----------------+-----------+-----------+-----------+---------------+
+{%- endif %}
+
+Total Hosts: {{total}}
+{%- if not list_boring %}
+White-listed Hosts: {{white_listed}}
+{%- endif %}
+Vulnerable Hosts: {{vulnerablehosts|count}}
+{%- if invalid_hosts %}
+Invalid Hosts: {{invalid_host_count}}
+{%- endif %}
