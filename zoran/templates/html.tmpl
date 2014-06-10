@@ -36,7 +36,7 @@
         <th>User</th>
         <th>Password</th>
       </tr>
-{%- for credential in vulnerablehost.credentials %}
+{%- for credential in vulnerablehost.credentials|print_it %}
       <tr>
         <td>{{credential.service}}</td>
         <td>{{credential.port}}</td>
@@ -56,7 +56,7 @@
         <th>Service</th>
         <th>Port</th>
       </tr>
-{%- for vulnerability in vulnerablehost.vulnerabilities %}
+{%- for vulnerability in vulnerablehost.vulnerabilities|print_it %}
       <tr>
         <td>{{vulnerability.name}}</td>
         <td>{{vulnerability.service}}</td>
@@ -75,17 +75,17 @@
       <tr>
         <th>UUID</th>
         <th>Address</th>
-        <th>Name</th>
         <th>Service</th>
         <th>Port</th>
+        <th>Name</th>
       </tr>
 {%- for vulnerability in vulnerabilities|print_it %}
       <tr>
         <td>{{vulnerability.uuid}}</td>
         <td>{{vulnerability.ip}}</td>
-        <td>{{vulnerability.name}}</td>
         <td>{{vulnerability.service}}</td>
         <td>{{vulnerability.port}}</td>
+        <td>{{vulnerability.name}}</td>
       </tr>
 {%- endfor %}
     </table>

@@ -10,7 +10,7 @@ Address: {{vulnerablehost.ip}}
 
 Credentials
 -----------
-{%- for credential in vulnerablehost.credentials %}
+{%- for credential in vulnerablehost.credentials|print_it %}
 
 Service:  {{credential.service}}
 Port:     {{credential.port}}
@@ -22,7 +22,7 @@ Password: {{credential.password}}
 
 Vulnerabilities
 ---------------
-{%- for vulnerability in vulnerablehost.vulnerabilities %}
+{%- for vulnerability in vulnerablehost.vulnerabilities|print_it %}
 
 Name:    {{vulnerability.name}}
 Service: {{vulnerability.service}}
@@ -37,26 +37,26 @@ Port:    {{vulnerability.port}}
 Vulnerability dump:
 ===================
 
-+--------------------------------------+-----------------+-----------+-----------+-----------+
-|                 UUID                 |     Address     |   Name    |   Service |   Port    |
-+--------------------------------------+-----------------+-----------+-----------+-----------+
++--------------------------------------+-----------------+-------------+--------+-----------+
+|                 UUID                 |     Address     |   Service   |  Port  |   Name    |
++--------------------------------------+-----------------+-------------+--------+-----------+
 {% for vulnerability in vulnerabilities|print_it -%}
-| {{vulnerability.uuid}} | {{vulnerability.ip|pad_ip}} |   {{vulnerability.name}}  |   {{vulnerability.service}}   |   {{vulnerability.port}}   |
+| {{vulnerability.uuid}} | {{vulnerability.ip|pad_ip}} |{{vulnerability.service|center(13)}}| {{vulnerability.port|center(6)}} | {{vulnerability.name}} |
 {% endfor -%}
-+--------------------------------------+-----------------+-----------+-----------+-----------+
++--------------------------------------+-----------------+-------------+--------+-----------+
 
 
 ================
 Credential Dump:
 ================
 
-+--------------------------------------+-----------------+-----------+-----------+-----------+---------------+
-|                 UUID                 |     Address     |   Service |   Port    |   User    |   Password    |
-+--------------------------------------+-----------------+-----------+-----------+-----------+---------------+
++--------------------------------------+-----------------+-------------+--------+------------+--------------+
+|                 UUID                 |     Address     |   Service   |  Port  |    User    |   Password   |
++--------------------------------------+-----------------+-------------+--------+------------+--------------+
 {% for credential in credentials|print_it -%}
-| {{credential.uuid}} | {{credential.ip|pad_ip}} |   {{credential.service}}  |   {{credential.port}} |   {{credential.user}} |   {{credential.password}} |
+| {{credential.uuid}} | {{credential.ip|pad_ip}} |{{credential.service|center(13)}}| {{credential.port|center(6)}} | {{credential.user|center(10)}} | {{credential.password|center(12)}} |
 {% endfor -%}
-+--------------------------------------+-----------------+-----------+-----------+-----------+---------------+
++--------------------------------------+-----------------+-------------+--------+------------+--------------+
 {%- endif %}
 
 Total Hosts: {{total}}
