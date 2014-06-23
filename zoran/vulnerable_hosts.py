@@ -59,7 +59,8 @@ class Vulnerability:
 
     def sort_key(self):
         """ How to sort the vulnerability dump."""
-        return self.name + self.port.zfill(5) + self.service + canonicalise_ip(self.ip)
+        return self.name + self.port.zfill(5) + \
+            self.service + canonicalise_ip(self.ip)
 
 
 class Credential:

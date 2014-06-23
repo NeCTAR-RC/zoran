@@ -1,3 +1,4 @@
 /zoran.egg-info/
 /*.xml
 /etc/zoran/zoran.conf
+*.pyc

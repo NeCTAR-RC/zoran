@@ -22,19 +22,29 @@ def print_it(value):
 def pad_ip(ip):
     """ Put padding spaces (if necessary) in front of an IP so it prints
         nicely in a text table."""
-    return ip.ljust(15)
+    return ip.rjust(15)
 
 
 def report_scan(report_format,
                 scan_time,
                 scan_id,
                 invalid_host_count,
-                vulnerable_hosts=[],
-                vulnerabilities=[],
-                credentials=[]):
+                vulnerable_hosts=[]):
     """ Create a report in the format specified (i.e. html or plain
         text or mixed) and save it in a string, then present it in the
         way specified (i.e. via email or printed to the screen.)"""
+
+    """ Scary list comprehensions that provide flat lists of all the
+        vulnerabilities and credentials listed by the vulnerable hosts."""
+    vulnerabilities = [vulnerability
+                       for sublist in [host.vulnerabilities
+                                       for host in vulnerable_hosts]
+                       for vulnerability in sublist]
+    credentials = [credential
+                   for sublist in [host.credentials
+                                   for host in vulnerable_hosts]
+                   for credential in sublist]
+
     if report_format == "html":
         report = html_print(scan_time,
                             scan_id,
@@ -102,8 +112,7 @@ def html_print(scan_time,
     return report.render(title=CONF.email.report_subject,
                          scan_time=scan_time,
                          scan_id=scan_id,
-                         vulnerablehosts=sorted([h for h in vulnerable_hosts if h.printable_host()],
-                                                key=lambda host: canonicalise_ip(host.ip)),
+                         vulnerablehosts=sorted([h for h in vulnerable_hosts if h.printable_host()], key=lambda host: canonicalise_ip(host.ip)),
                          dump=CONF.dump,
                          vulnerabilities=sorted(vulnerabilities,
                                                 key=methodcaller('sort_key')),
@@ -131,8 +140,7 @@ def text_print(scan_time,
     report = env.get_template('text.tmpl')
     return report.render(scan_time=scan_time,
                          scan_id=scan_id,
-                         vulnerablehosts=sorted([h for h in vulnerable_hosts if h.printable_host()],
-                                                key=lambda host: canonicalise_ip(host.ip)),
+                         vulnerablehosts=sorted([h for h in vulnerable_hosts if h.printable_host()], key=lambda host: canonicalise_ip(host.ip)),
                          dump=CONF.dump,
                          vulnerabilities=sorted(vulnerabilities,
                                                 key=methodcaller('sort_key')),

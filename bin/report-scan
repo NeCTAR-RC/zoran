@@ -13,6 +13,7 @@ from zoran.config import CONF, cfg
 
 from zoran.vulnerable_hosts import VulnerableHost, Vulnerability, Credential
 from zoran.vulnerable_hosts_report import report_scan
+from zoran.history_database import HistoryDatabase
 
 core_opts = [
     cfg.BoolOpt('disable-host-validation',
@@ -22,16 +23,22 @@ core_opts = [
                         vulnerabilities and credentials in one huge
                         table"""),
     cfg.BoolOpt('ignore-history',
-                help="""Don't bother to compare the security holes with
-                        what's been tested before"""),
+                help="""Just report on all the security holes found in
+                        the input file and ignore any historical
+                        data."""),
     cfg.StrOpt('input-file',
-               help="""Result XML to process""",
-               required=True),
+               help="""Result XML to process. Unless doing a point-in-time
+                       report, this option will always be needed."""),
     cfg.StrOpt('ip',
                help="""IP regex of servers"""),
     cfg.BoolOpt('list-boring',
                 help="""List all vulnerabilities, even ones that would
                         normally be white listed"""),
+    cfg.StrOpt('point-in-time',
+               help="""Query the history database at a particular point
+                       in time (specified as YYYY-MM-DD) by looking in
+                       the database as opposed to the usual XML input
+                       file."""),
     cfg.BoolOpt('report-empty',
                 help="""Provide a report, even if there isn't any
                         vulnerability to report"""),
@@ -54,74 +61,104 @@ def host_service(host, service_id):
 
 
 def run(input_file, live_hosts):
-    tree = etree.parse(input_file)
-
-    # Filter report down to hosts only
-    hosts = tree.find('hosts')
-
-    # Convert nova hosts to dict
-    live_hosts = dict((h.id, h) for h in live_hosts)
-
-    # Extract the scan id
-    scan_details = tree.find('generated').attrib
-    scan_id = scan_details['project']
 
     invalid_host_count = 0
-
     vulnerable_hosts = []
-    vulnerabilities = []
-    credentials = []
 
-    for host in hosts:
-        host = xmltodict.parse(etree.tostring(host))
-        host = wash_host(host['host'])
-        host['scan-id'] = scan_id
-        if host['uuid'] not in live_hosts and not CONF.disable_host_validation:
-            invalid_host_count += 1
-            continue
+    if CONF.point_in_time:
+        history = HistoryDatabase()
+        # history.open_database(CONF.database)
+        history.open_database("/home/zoran/archive/history.csv")
+        holes = history.holes_at_point_in_time(CONF.point_in_time)
+        for hole in holes:
+            host_uuid = holes[2]
+            host_address = holes[3]
+            for host in vulnerable_hosts:
+                if host.uuid == host_uuid and\
+                   host.address == host_address:
+                    vulnerable_host = host
+                    break
+            if not vulnerable_host:
+                vulnerable_host = VulnerableHost(host_uuid, host_address)
+                vulnerable_hosts.append(vulnerable_host)
+            if hole[4] == "V":
+                vulnerable_host.add_vulnerability(Vulnerability(hole[7],
+                                                                hole[5],
+                                                                hole[6]))
+            elif hole[4] == "C":
+                vulnerable_host.add_credential(Credential(hole[5],
+                                                          hole[6],
+                                                          hole[8],
+                                                          hole[9]))
+    else:
+        tree = etree.parse(input_file)
 
-        # Create a new vulnerable host object. It doesn't matter that
-        # this will be lost in the next iteration of the loop, as the
-        # Class will keep track of it.
-        vulnerable_host = VulnerableHost(host['uuid'], host['address'])
-        vulnerable_hosts.append(vulnerable_host)
+        # Filter report down to hosts only
+        hosts = tree.find('hosts')
 
-        for vulns in host['vulns']:
-            if 'service-id' in vulns:
-                service = host_service(host, vulns['service-id'])
-                service_name = service['name']
-                service_port = service['port']
-            else:
-                service_name = "None"
-                service_port = "None"
-            new_vuln = (Vulnerability(vulns['name'],
-                        service_name,
-                        service_port))
-            vulnerabilities.append(new_vuln)
-            vulnerable_host.add_vulnerability(new_vuln)
+        # Convert nova hosts to dict
+        live_hosts = dict((h.id, h) for h in live_hosts)
 
-        for cred in host['creds']:
-            new_cred = Credential(cred['sname'],
-                                  cred['port'],
-                                  cred['user'],
-                                  cred['pass'])
-            credentials.append(new_cred)
-            vulnerable_host.add_credential(new_cred)
+        # Extract the scan id
+        scan_details = tree.find('generated').attrib
+        scan_id = scan_details['project']
 
-    if CONF.report_format not in ("mixed", "text", "html"):
-        print('Unknown report format: "%"' % CONF.report_format)
-        return
+        for host in hosts:
+            host = xmltodict.parse(etree.tostring(host))
+            host = wash_host(host['host'])
+            host['scan-id'] = scan_id
+            if host['uuid'] not in live_hosts and\
+               not CONF.disable_host_validation:
+                invalid_host_count += 1
+                continue
+
+            vulnerable_host = VulnerableHost(host['uuid'], host['address'])
+            vulnerable_hosts.append(vulnerable_host)
+
+            for vulns in host['vulns']:
+                if 'service-id' in vulns:
+                    service = host_service(host, vulns['service-id'])
+                    service_name = service['name']
+                    service_port = service['port']
+                else:
+                    service_name = "None"
+                    service_port = "None"
+                vulnerable_host.add_vulnerability(Vulnerability(vulns['name'],
+                                                                service_name,
+                                                                service_port))
+
+            for cred in host['creds']:
+                vulnerable_host.add_credential(Credential(cred['sname'],
+                                                          cred['port'],
+                                                          cred['user'],
+                                                          cred['pass']))
+
+        if not CONF.ignore_history:
+            # Update the database and filter the already-open cases.
+            history = HistoryDatabase()
+            # history.open_database(CONF.database)
+            history.open_database("/home/zoran/archive/history.csv")
+            history.close_old_cases(vulnerable_hosts,
+                                    scan_details['time'])
+            history.open_new_cases(vulnerable_hosts,
+                                   scan_details['time'],
+                                   scan_id)
+            history.close_database()
 
     report_scan(CONF.report_format,
                 scan_details['time'],
                 scan_id,
                 invalid_host_count,
-                vulnerable_hosts,
-                vulnerabilities,
-                credentials)
+                vulnerable_hosts)
 
 if __name__ == "__main__":
+
     CONF(sys.argv[1:], project='zoran')
+
+    if CONF.report_format not in ("mixed", "text", "html"):
+        print('Unknown report format: "%"' % CONF.report_format)
+        exit
+
     nova_client = connect()
     if CONF.disable_host_validation:
         servers = []
