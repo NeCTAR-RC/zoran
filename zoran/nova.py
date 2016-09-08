@@ -3,7 +3,7 @@ from itertools import chain
 from datetime import datetime
 
 import pytz
-from novaclient.v1_1 import client as nclient
+from novaclient import client as nclient
 
 from zoran.templates import TEMPLATE_ENV
 from zoran.config import CONF
@@ -17,8 +17,9 @@ def connect():
     username = CONF.nova.admin_username
     password = CONF.nova.admin_password
     url = CONF.nova.auth_url
-    nova_client = nclient.Client(username=username, api_key=password,
+    nova_client = nclient.Client('2', username=username, api_key=password,
                                  project_id=tenant_name, auth_url=url)
+
     return nova_client
 
 
